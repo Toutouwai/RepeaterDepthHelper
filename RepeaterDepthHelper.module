@@ -1,0 +1,109 @@
+<?php namespace ProcessWire;
+
+/**
+ *
+ * Repeater Depth Helper
+ *
+ * @author Robin Sallis
+ *
+ * ProcessWire 3.x
+ * Copyright (C) 2011 by Ryan Cramer
+ * Licensed under GNU/GPL v2, see LICENSE.TXT
+ *
+ * http://www.processwire.com
+ * http://www.ryancramer.com
+ *
+ */
+
+class RepeaterDepthHelper extends WireData implements Module {
+
+	/**
+	 * Module information
+	 */
+	public static function getModuleInfo() {
+		return array(
+			'title' => 'Repeater Depth Helper',
+			'summary' => 'Enforces some depth rules for Repeater fields on save, and provides a helper method that returns a nested depth structure for a Repeater field value.',
+			'version' => '0.1.0',
+			'author' => 'Robin Sallis',
+			'href' => 'https://github.com/Toutouwai/RepeaterDepthHelper',
+			'icon' => 'indent',
+			'autoload' => 'template=admin',
+			'singular' => true,
+			'requires' => 'ProcessWire>=3.0.134',
+		);
+	}
+
+
+	/**
+	 * Ready
+	 */
+	public function ready() {
+		$this->wire('pages')->addHookAfter('saveReady', $this, 'enforceDepthRules');
+	}
+
+	/**
+	 * Enforce depth rules for Repeater fields
+	 * 1. First item must have a depth of zero
+	 * 2. Item depth must not be more than one greater than previous item depth
+	 *
+	 * @param HookEvent $event
+	 */
+	protected function enforceDepthRules(HookEvent $event) {
+		$page = $event->arguments(0);
+		$repeater_fields = $page->fields->find("type=FieldtypeRepeater");
+		foreach($repeater_fields as $repeater_field) {
+			// Only if depth is enabled for the field
+			if(!$repeater_field->repeaterDepth) continue;
+			// Enforce Repeater depth rules
+			$i = 0;
+			$prev_depth = 0;
+			$changed = false;
+			foreach($page->{$repeater_field->name} as $item) {
+				/* @var RepeaterPage $item */
+				$depth = $item->getDepth();
+				// First item must have a depth of zero
+				if($i === 0 && $depth !== 0) {
+					$depth = 0;
+					$item->setDepth($depth);
+					$changed = true;
+				}
+				// Item depth must not be more than one greater than previous item depth
+				elseif($depth - $prev_depth > 1) {
+					$depth = $prev_depth + 1;
+					$item->setDepth($depth);
+					$changed = true;
+				}
+				$prev_depth = $depth;
+				$i++;
+			}
+			if($changed) $page->trackChange($repeater_field->name);
+		}
+
+	}
+
+
+	/**
+	 * Returns a nested depth structure for a Repeater field value
+	 * For each item in the array:
+	 *  - key is page ID
+	 *  - value is array of "child" page IDs, or null if "childless"
+	 *
+	 * @param RepeaterPageArray $value
+	 * @return array
+	 */
+	public function getDepthStructure(RepeaterPageArray $value) {
+		$repeater_structure = array();
+		$path = array();
+		foreach($value as $item) {
+			/* @var RepeaterPage $item */
+			$depth = $item->getDepth();
+			while($depth < count($path)) array_pop($path);
+			$path[$depth] = $item->id;
+			$reference = &$repeater_structure;
+			foreach($path as $key) $reference = &$reference[$key];
+		}
+		return $repeater_structure;
+	}
+
+}
