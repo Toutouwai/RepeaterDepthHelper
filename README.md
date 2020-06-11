@@ -23,7 +23,7 @@ The module doesn't make any assumptions about how you might want to use the dept
 function outputNestedList($depth_structure, $repeater_items) {
     $out = "<ul>";
     foreach($depth_structure as $page_id => $nested_children) {
-        $out .= "<li>{$repeater_items->get("id=$page_id")->title}";
+        $out .= "<li>" . $repeater_items->get("id=$page_id")->title;
         // Go recursive if there are nested children
         if(is_array($nested_children)) $out .= outputNestedList($nested_children, $repeater_items);
         $out .= "</li>";
@@ -37,4 +37,4 @@ $depth_structure = $repeater_items->getDepthStructure();
 echo outputNestedList($depth_structure, $repeater_items);
 ```
 
-![rdh-list](https://user-images.githubusercontent.com/1538852/84331008-1d8b1e00-abdd-11ea-9e6e-fc73966d0e71.png)
+![rdh-list](https://user-images.githubusercontent.com/1538852/84332863-27635000-abe2-11ea-9938-c00a4fc13b6d.png)
