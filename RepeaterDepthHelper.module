@@ -24,13 +24,12 @@ class RepeaterDepthHelper extends WireData implements Module {
 		return array(
 			'title' => 'Repeater Depth Helper',
 			'summary' => 'Enforces some depth rules for Repeater fields on save, and provides a helper method that returns a nested depth structure for a Repeater field value.',
-			'version' => '0.1.0',
+			'version' => '0.1.1',
 			'author' => 'Robin Sallis',
 			'href' => 'https://github.com/Toutouwai/RepeaterDepthHelper',
 			'icon' => 'indent',
-			'autoload' => 'template=admin',
-			'singular' => true,
-			'requires' => 'ProcessWire>=3.0.134',
+			'autoload' => true,
+			'requires' => 'ProcessWire>=3.0.134, PHP>=5.4.0',
 		);
 	}
 
@@ -40,12 +39,13 @@ class RepeaterDepthHelper extends WireData implements Module {
 	 */
 	public function ready() {
 		$this->wire('pages')->addHookAfter('saveReady', $this, 'enforceDepthRules');
+		$this->addHookMethod('RepeaterPageArray::getDepthStructure', $this, 'getDepthStructure');
 	}
 
 	/**
 	 * Enforce depth rules for Repeater fields
-	 * 1. First item must have a depth of zero
-	 * 2. Item depth must not be more than one greater than previous item depth
+	 * 1. The first item must have a depth of zero
+	 * 2. Each item depth must not be more than one greater than previous item depth
 	 *
 	 * @param HookEvent $event
 	 */
@@ -89,13 +89,14 @@ class RepeaterDepthHelper extends WireData implements Module {
 	 *  - key is page ID
 	 *  - value is array of "child" page IDs, or null if "childless"
 	 *
-	 * @param RepeaterPageArray $value
-	 * @return array
+	 * @param HookEvent $event
 	 */
-	public function getDepthStructure(RepeaterPageArray $value) {
-		$repeater_structure = array();
-		$path = array();
-		foreach($value as $item) {
+	protected function getDepthStructure(HookEvent $event) {
+		/** @var RepeaterPageArray $rpa */
+		$rpa = $event->object;
+		$repeater_structure = [];
+		$path = [];
+		foreach($rpa as $item) {
 			/* @var RepeaterPage $item */
 			$depth = $item->getDepth();
 			while($depth < count($path)) array_pop($path);
@@ -103,7 +104,7 @@ class RepeaterDepthHelper extends WireData implements Module {
 			$reference = &$repeater_structure;
 			foreach($path as $key) $reference = &$reference[$key];
 		}
-		return $repeater_structure;
+		$event->return = $repeater_structure;
 	}
 
 }
